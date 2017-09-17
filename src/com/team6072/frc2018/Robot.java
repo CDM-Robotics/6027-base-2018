@@ -132,7 +132,6 @@ public class Robot extends IterativeRobot {
             mDrive.setBrakeMode(true);
 
             mEnabledLooper.start();
-            mSuperstructure.reloadConstants();
             mAutoModeExecuter = new AutoModeExecuter();
             mAutoModeExecuter.setAutoMode(AutoModeSelector.getSelectedAutoMode());
             mAutoModeExecuter.start();
@@ -166,7 +165,6 @@ public class Robot extends IterativeRobot {
             // Shift to high
             mDrive.setHighGear(true);
             zeroAllSensors();
-            mSuperstructure.reloadConstants();
             mSuperstructure.setOverrideCompressor(false);
         } catch (Throwable t) {
             CrashTracker.logThrowableCrash(t);
@@ -206,72 +204,27 @@ public class Robot extends IterativeRobot {
 
                 if ((mControlBoard.getDriveAimButton() && !mDrive.isApproaching())
                         || !mControlBoard.getDriveAimButton()) {
-                    if (mControlBoard.getUnjamButton()) {
-                        mSuperstructure.setWantedState(Superstructure.WantedState.UNJAM_SHOOT);
-                    } else {
-                        mSuperstructure.setWantedState(Superstructure.WantedState.SHOOT);
-                    }
+                    mSuperstructure.setWantedState(Superstructure.WantedState.SHOOT);
                 } else {
                     mSuperstructure.setWantedState(Superstructure.WantedState.RANGE_FINDING);
                 }
             } else {
                 // Make sure not to interrupt shooting spindown.
-                if (!mSuperstructure.isShooting()) {
                     mDrive.setOpenLoop(mCheesyDriveHelper.cheesyDrive(throttle, turn, mControlBoard.getQuickTurn(),
                             !mControlBoard.getLowGear()));
                     boolean wantLowGear = mControlBoard.getLowGear();
                     mDrive.setHighGear(!wantLowGear);
-                }
 
 
-                boolean wantsExhaust = mControlBoard.getExhaustButton();
-
-                if (Constants.kIsShooterTuning) {
-                    mLED.setWantedState(LED.WantedState.FIND_RANGE);
-                    if (mCommitTuning.update(mControlBoard.getLowGear())) {
-                        // Commit to TuningMap.
-                        double rpm = mSuperstructure.getCurrentTuningRpm();
-                        double range = mSuperstructure.getCurrentRange();
-                        System.out.println("Tuning range: " + range + " = " + rpm);
-                        mTuningFlywheelMap.put(new InterpolatingDouble(range), new InterpolatingDouble(rpm));
-                        mSuperstructure.incrementTuningRpm();
-                    }
-                }
-
-                // Exhaust has highest priority for intake.
-                if (wantsExhaust) {
-                    mSuperstructure.setWantIntakeReversed();
-                } else if (mControlBoard.getIntakeButton()) {
-                    mSuperstructure.setWantIntakeOn();
-                } else if (!mSuperstructure.isShooting()) {
-                    mSuperstructure.setWantIntakeStopped();
-                }
 
                 // Hanging has highest priority for feeder, followed by exhausting, unjamming, and finally
                 // feeding.
                 if (mControlBoard.getHangButton()) {
                     mSuperstructure.setWantedState(Superstructure.WantedState.HANG);
-                } else if (wantsExhaust) {
-                    mSuperstructure.setWantedState(Superstructure.WantedState.EXHAUST);
-                } else if (mControlBoard.getUnjamButton()) {
-                    mSuperstructure.setWantedState(Superstructure.WantedState.UNJAM);
-                } else if (mControlBoard.getFeedButton()) {
-                    mSuperstructure.setWantedState(Superstructure.WantedState.MANUAL_FEED);
                 } else if (mControlBoard.getRangeFinderButton()) {
                     mSuperstructure.setWantedState(Superstructure.WantedState.RANGE_FINDING);
                 } else {
                     mSuperstructure.setWantedState(Superstructure.WantedState.IDLE);
-                }
-
-                if (mControlBoard.getFlywheelSwitch()) {
-                    mSuperstructure.setClosedLoopRpm(Constants.kDefaultShootingRPM);
-                } else if (mControlBoard.getShooterOpenLoopButton()) {
-                    mSuperstructure.setShooterOpenLoop(0);
-                } else if (mControlBoard.getShooterClosedLoopButton()) {
-                    mSuperstructure.setClosedLoopRpm(Constants.kDefaultShootingRPM);
-                } else if (!mControlBoard.getHangButton() && !mControlBoard.getRangeFinderButton() &&
-                        !mSuperstructure.isShooting()) {
-                    mSuperstructure.setShooterOpenLoop(0);
                 }
 
                 if (mControlBoard.getBlinkLEDButton()) {
@@ -291,8 +244,7 @@ public class Robot extends IterativeRobot {
             } else {
                 mGearGrabber.setWantedState(WantedState.IDLE);
             }
-
-            mSuperstructure.setActuateHopper(mControlBoard.getActuateHopperButton());
+            
             allPeriodic();
         } catch (Throwable t) {
             CrashTracker.logThrowableCrash(t);

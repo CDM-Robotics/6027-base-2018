@@ -51,17 +51,6 @@ public class GamepadControlBoard implements ControlBoardInterface {
         return mGamepad.getRawButton(1);
     }
 
-    @Override
-    public boolean getIntakeButton() {
-        // L1
-        return mGamepad.getRawButton(5);
-    }
-
-    @Override
-    public boolean getFeedButton() {
-        // X
-        return false;
-    }
 
     @Override
     public boolean getGrabGearButton() {
@@ -74,37 +63,6 @@ public class GamepadControlBoard implements ControlBoardInterface {
         return mGamepad.getRawAxis(3) > 0.1;
     }
 
-    @Override
-    public boolean getShooterOpenLoopButton() {
-        // Y
-        return mGamepad.getRawButton(4);
-    }
-
-    @Override
-    public boolean getExhaustButton() {
-        return false;
-    }
-
-    @Override
-    public boolean getUnjamButton() {
-        return false;
-    }
-
-    @Override
-    public boolean getShooterClosedLoopButton() {
-        // Back
-        return false;
-    }
-
-    @Override
-    public boolean getFlywheelSwitch() {
-        return false;
-    }
-
-    @Override
-    public boolean getActuateHopperButton() {
-        return mGamepad.getRawButton(9);
-    }
 
     @Override
     public boolean getBlinkLEDButton() {
