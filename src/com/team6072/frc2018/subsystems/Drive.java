@@ -6,14 +6,10 @@ import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import com.ctre.CANTalon;
-import com.ctre.CANTalon.StatusFrameRate;
-import com.ctre.CANTalon.VelocityMeasurementPeriod;
 
 import com.team6072.frc2018.Constants;
 import com.team6072.frc2018.Kinematics;
 import com.team6072.frc2018.RobotState;
-import com.team6072.frc2018.ShooterAimingParameters;
 import com.team6072.frc2018.loops.Loop;
 import com.team6072.frc2018.loops.Looper;
 import com.team6072.lib.util.DriveSignal;

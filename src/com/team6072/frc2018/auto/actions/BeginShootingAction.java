@@ -1,7 +1,6 @@
 package com.team6072.frc2018.auto.actions;
 
 import com.team6072.frc2018.subsystems.Drive;
-import com.team6072.frc2018.subsystems.Intake;
 import com.team6072.frc2018.subsystems.Superstructure;
 
 /**

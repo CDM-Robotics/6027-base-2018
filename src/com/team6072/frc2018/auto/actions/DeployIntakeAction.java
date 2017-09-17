@@ -2,8 +2,6 @@ package com.team6072.frc2018.auto.actions;
 
 import edu.wpi.first.wpilibj.Timer;
 
-import com.team6072.frc2018.subsystems.Intake;
-
 /**
  * Deploys the intake. Based on the runIntake parameter, waits 0.25 seconds to let the intake deploy reliably.
  * 

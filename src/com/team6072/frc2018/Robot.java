@@ -44,8 +44,7 @@ public class Robot extends IterativeRobot {
 
     // Create subsystem manager
     private final SubsystemManager mSubsystemManager = new SubsystemManager(
-            Arrays.asList(Drive.getInstance(), Superstructure.getInstance(), Shooter.getInstance(),
-                    Feeder.getInstance(), Hopper.getInstance(), Intake.getInstance(),
+            Arrays.asList(Drive.getInstance(), Superstructure.getInstance(),
                     ConnectionMonitor.getInstance(), LED.getInstance(),
                     MotorGearGrabber.getInstance()));
 
@@ -127,8 +126,6 @@ public class Robot extends IterativeRobot {
             mSuperstructure.setOverrideCompressor(true);
 
             mAutoModeExecuter = null;
-
-            Intake.getInstance().reset();
 
             // Shift to high
             mDrive.setHighGear(true);
@@ -226,7 +223,6 @@ public class Robot extends IterativeRobot {
                     mDrive.setHighGear(!wantLowGear);
                 }
 
-                Intake.getInstance().setCurrentThrottle(mControlBoard.getThrottle());
 
                 boolean wantsExhaust = mControlBoard.getExhaustButton();
 
@@ -353,12 +349,8 @@ public class Robot extends IterativeRobot {
     public void testInit() {
         Timer.delay(0.5);
 
-        boolean results = Feeder.getInstance().checkSystem();
-        results &= Drive.getInstance().checkSystem();
-        results &= Intake.getInstance().checkSystem();
+        boolean results = Drive.getInstance().checkSystem();
         results &= MotorGearGrabber.getInstance().checkSystem();
-        results &= Shooter.getInstance().checkSystem();
-        results &= Hopper.getInstance().checkSystem();
 
         if (!results) {
             System.out.println("CHECK ABOVE OUTPUT SOME SYSTEMS FAILED!!!");

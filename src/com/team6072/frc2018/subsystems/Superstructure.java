@@ -27,11 +27,7 @@ import java.util.Optional;
  * the superstructure, which passes on the commands to the correct subsystem.
  * 
  * The superstructure also coordinates actions between different subsystems like the feeder and shooter.
- * 
- * @see Intake
- * @see Hopper
- * @see Feeder
- * @see Shooter
+ *
  * @see LED
  * @see Subsystem
  */
@@ -46,10 +42,7 @@ public class Superstructure extends Subsystem {
         return mInstance;
     }
 
-    private final Feeder mFeeder = Feeder.getInstance();
-    private final Intake mIntake = Intake.getInstance();
-    private final Hopper mHopper = Hopper.getInstance();
-    private final Shooter mShooter = Shooter.getInstance();
+
     private final LED mLED = LED.getInstance();
     private final Solenoid mHopperSolenoid = Constants.makeSolenoidForId(Constants.kHopperSolenoidId);
     private final Compressor mCompressor = new Compressor(0);
@@ -96,17 +89,9 @@ public class Superstructure extends Subsystem {
         return mDrive.isOnTarget() && mDrive.isAutoAiming();
     }
 
-    public boolean isOnTargetToShoot() {
-        return isDriveOnTarget() && mShooter.isOnTarget();
-    }
 
     public boolean isOnTargetToKeepShooting() {
         return true;
-    }
-
-    public synchronized boolean isShooting() {
-        return (mSystemState == SystemState.SHOOTING) || (mSystemState == SystemState.SHOOTING_SPIN_DOWN)
-                || (mSystemState == SystemState.UNJAMMING_WITH_SHOOT);
     }
 
     private Loop mLoop = new Loop() {
@@ -135,35 +120,8 @@ public class Superstructure extends Subsystem {
                 case IDLE:
                     newState = handleIdle(mStateChanged);
                     break;
-                case WAITING_FOR_ALIGNMENT:
-                    newState = handleWaitingForAlignment();
-                    break;
-                case WAITING_FOR_FLYWHEEL:
-                    newState = handleWaitingForFlywheel();
-                    break;
-                case SHOOTING:
-                    newState = handleShooting(timestamp);
-                    break;
-                case UNJAMMING_WITH_SHOOT:
-                    newState = handleUnjammingWithShoot(timestamp);
-                    break;
-                case UNJAMMING:
-                    newState = handleUnjamming();
-                    break;
-                case JUST_FEED:
-                    newState = handleJustFeed();
-                    break;
-                case EXHAUSTING:
-                    newState = handleExhaust();
-                    break;
-                case HANGING:
-                    newState = handleHang();
-                    break;
                 case RANGE_FINDING:
                     newState = handleRangeFinding();
-                    break;
-                case SHOOTING_SPIN_DOWN:
-                    newState = handleShootingSpinDown(timestamp);
                     break;
                 default:
                     newState = SystemState.IDLE;
@@ -188,9 +146,7 @@ public class Superstructure extends Subsystem {
     };
 
     private SystemState handleRangeFinding() {
-        autoSpinShooter(false);
         mLED.setWantedState(LED.WantedState.FIND_RANGE);
-        mFeeder.setWantedState(Feeder.WantedState.FEED);
 
         switch (mWantedState) {
         case UNJAM:
@@ -216,8 +172,6 @@ public class Superstructure extends Subsystem {
         if (stateChanged) {
             stop();
             mLED.setWantedState(LED.WantedState.OFF);
-            mFeeder.setWantedState(Feeder.WantedState.IDLE);
-            mHopper.setWantedState(Hopper.WantedState.IDLE);
         }
         mCompressor.setClosedLoopControl(!mCompressorOverride);
 
@@ -241,248 +195,6 @@ public class Superstructure extends Subsystem {
         }
     }
 
-    private SystemState handleWaitingForAlignment() {
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.FEED);
-        mHopper.setWantedState(Hopper.WantedState.IDLE);
-        setWantIntakeOnForShooting();
-
-        // Don't care about this return value - check the drive directly.
-        autoSpinShooter(false);
-        if (isDriveOnTarget()) {
-            RobotState.getInstance().resetVision();
-            return SystemState.WAITING_FOR_FLYWHEEL;
-        }
-        switch (mWantedState) {
-        case UNJAM:
-            return SystemState.UNJAMMING;
-        case UNJAM_SHOOT:
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        case SHOOT:
-            return SystemState.WAITING_FOR_ALIGNMENT;
-        case MANUAL_FEED:
-            return SystemState.JUST_FEED;
-        case EXHAUST:
-            return SystemState.EXHAUSTING;
-        default:
-            return SystemState.IDLE;
-        }
-    }
-
-    private SystemState handleWaitingForFlywheel() {
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.FEED);
-        mHopper.setWantedState(Hopper.WantedState.IDLE);
-        setWantIntakeOnForShooting();
-
-        if (autoSpinShooter(true)) {
-            System.out.println(Timer.getFPGATimestamp() + ": making shot: Range: " + mLastGoalRange + " setpoint: "
-                    + mShooter.getSetpointRpm());
-
-            return SystemState.SHOOTING;
-        }
-        switch (mWantedState) {
-        case UNJAM:
-            return SystemState.UNJAMMING;
-        case UNJAM_SHOOT:
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        case SHOOT:
-            return SystemState.WAITING_FOR_FLYWHEEL;
-        case MANUAL_FEED:
-            return SystemState.JUST_FEED;
-        case EXHAUST:
-            return SystemState.EXHAUSTING;
-        default:
-            return SystemState.IDLE;
-        }
-    }
-
-    private SystemState handleShooting(double timestamp) {
-        // Don't auto spin anymore - just hold the last setpoint
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.FEED);
-        mHopper.setWantedState(Hopper.WantedState.FEED);
-        mLED.setWantedState(LED.WantedState.FIND_RANGE);
-        setWantIntakeOnForShooting();
-
-        // Pump circular buffer with last rpm from talon.
-        final double rpm = mShooter.getLastSpeedRpm();
-
-        if (mStateChanged) {
-            mShooterRpmBuffer.clear();
-        }
-
-        // Find time of last shooter disturbance.
-        if ((timestamp - mCurrentStateStartTime < Constants.kShooterMinShootingTime) ||
-                !mShooterRpmBuffer.isFull() ||
-                (Math.abs(mShooterRpmBuffer.getAverage() - rpm) > Constants.kShooterDisturbanceThreshold)) {
-            mLastDisturbanceShooterTime = timestamp;
-        }
-
-        mShooterRpmBuffer.addValue(rpm);
-
-        switch (mWantedState) {
-        case UNJAM_SHOOT:
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        case SHOOT:
-            if (!isOnTargetToKeepShooting()) {
-                return SystemState.WAITING_FOR_ALIGNMENT;
-            }
-            boolean jam_detected = false;
-            if (timestamp - mLastDisturbanceShooterTime > Constants.kShooterJamTimeout) {
-                // We have jammed, move to unjamming.
-                jam_detected = true;
-            }
-            SmartDashboard.putBoolean("Jam Detected", jam_detected);
-
-            if (jam_detected) {
-                return SystemState.UNJAMMING_WITH_SHOOT;
-            } else {
-                return SystemState.SHOOTING;
-            }
-        case RANGE_FINDING:
-            return SystemState.RANGE_FINDING;
-        default:
-            return SystemState.SHOOTING_SPIN_DOWN;
-        }
-    }
-
-    private SystemState handleUnjammingWithShoot(double timestamp) {
-        // Don't auto spin anymore - just hold the last setpoint
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.FEED);
-
-        // Make sure to reverse the floor.
-        mHopper.setWantedState(Hopper.WantedState.EXHAUST);
-        mLED.setWantedState(LED.WantedState.FIND_RANGE);
-        setWantIntakeOnForShooting();
-
-        switch (mWantedState) {
-        case UNJAM_SHOOT:
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        case SHOOT:
-            if (timestamp - mCurrentStateStartTime > Constants.kShooterUnjamDuration) {
-                return SystemState.SHOOTING;
-            }
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        default:
-            return SystemState.SHOOTING;
-        }
-    }
-
-    private SystemState handleShootingSpinDown(double timestamp) {
-        // Don't auto spin anymore - just hold the last setpoint
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.FEED);
-
-        // Turn off the floor.
-        mHopper.setWantedState(Hopper.WantedState.IDLE);
-
-        mLED.setWantedState(LED.WantedState.FIND_RANGE);
-        setWantIntakeOnForShooting();
-
-        if (timestamp - mCurrentStateStartTime > Constants.kShooterSpinDownTime) {
-            switch (mWantedState) {
-            case UNJAM:
-                return SystemState.UNJAMMING;
-            case UNJAM_SHOOT:
-                return SystemState.UNJAMMING_WITH_SHOOT;
-            case SHOOT:
-                return SystemState.WAITING_FOR_ALIGNMENT;
-            case MANUAL_FEED:
-                return SystemState.JUST_FEED;
-            case EXHAUST:
-                return SystemState.EXHAUSTING;
-            case HANG:
-                return SystemState.HANGING;
-            case RANGE_FINDING:
-                return SystemState.RANGE_FINDING;
-            default:
-                return SystemState.IDLE;
-            }
-        }
-        return SystemState.SHOOTING_SPIN_DOWN;
-    }
-
-    private SystemState handleUnjamming() {
-        mShooter.stop();
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.UNJAM);
-        mHopper.setWantedState(Hopper.WantedState.UNJAM);
-        mLED.setWantedState(LED.WantedState.FIND_RANGE);
-        switch (mWantedState) {
-        case UNJAM:
-            return SystemState.UNJAMMING;
-        case UNJAM_SHOOT:
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        case SHOOT:
-            return SystemState.WAITING_FOR_ALIGNMENT;
-        case EXHAUST:
-            return SystemState.EXHAUSTING;
-        default:
-            return SystemState.IDLE;
-        }
-    }
-
-    private SystemState handleJustFeed() {
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.FEED);
-        mHopper.setWantedState(Hopper.WantedState.FEED);
-
-        mIntake.setOnWhileShooting();
-
-        switch (mWantedState) {
-        case UNJAM:
-            return SystemState.UNJAMMING;
-        case UNJAM_SHOOT:
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        case SHOOT:
-            return SystemState.WAITING_FOR_ALIGNMENT;
-        case MANUAL_FEED:
-            return SystemState.JUST_FEED;
-        case EXHAUST:
-            return SystemState.EXHAUSTING;
-        default:
-            return SystemState.IDLE;
-        }
-    }
-
-    private SystemState handleExhaust() {
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.EXHAUST);
-        mHopper.setWantedState(Hopper.WantedState.EXHAUST);
-
-        switch (mWantedState) {
-        case UNJAM:
-            return SystemState.UNJAMMING;
-        case UNJAM_SHOOT:
-            return SystemState.UNJAMMING_WITH_SHOOT;
-        case SHOOT:
-            return SystemState.WAITING_FOR_ALIGNMENT;
-        case MANUAL_FEED:
-            return SystemState.JUST_FEED;
-        case EXHAUST:
-            return SystemState.EXHAUSTING;
-        default:
-            return SystemState.IDLE;
-        }
-
-    }
-
-    private SystemState handleHang() {
-        mCompressor.setClosedLoopControl(false);
-        mFeeder.setWantedState(Feeder.WantedState.IDLE);
-        mHopper.setWantedState(Hopper.WantedState.IDLE);
-        mShooter.setOpenLoop(-12.0);
-
-        switch (mWantedState) {
-        case HANG:
-            return SystemState.HANGING;
-        default:
-            return SystemState.IDLE;
-        }
-    }
-
     private double getShootingSetpointRpm(double range) {
         if (Constants.kUseFlywheelAutoAimPolynomial) {
             return Constants.kFlywheelAutoAimPolynomial.predict(range);
@@ -491,73 +203,6 @@ public class Superstructure extends Subsystem {
         }
     }
 
-    public synchronized boolean autoSpinShooter(boolean allow_shooting) {
-        final double timestamp = Timer.getFPGATimestamp();
-        final Optional<ShooterAimingParameters> aimOptional = RobotState.getInstance()
-                .getAimingParameters();
-        mLED.setWantedState(LED.WantedState.FIND_RANGE);
-        if (aimOptional.isPresent()) {
-            final ShooterAimingParameters aim = aimOptional.get();
-            double range = aim.getRange();
-            final boolean range_valid = Constants.kIsShooterTuning || (range >= Constants.kShooterAbsoluteRangeFloor
-                    && range <= Constants.kShooterAbsoluteRangeCeiling);
-            if (!range_valid) {
-                range = Math.max(Constants.kShooterAbsoluteRangeFloor,
-                        Math.min(Constants.kShooterAbsoluteRangeCeiling, range));
-            }
-            if (!Constants.kIsShooterTuning) {
-
-                mLastGoalRange = range;
-                double setpoint = getShootingSetpointRpm(range);
-                if (allow_shooting && aim.getStability() >= Constants.kShooterMinTrackStability) {
-                    mShooter.setHoldWhenReady(setpoint);
-                } else {
-                    setpoint = getShootingSetpointRpm(Constants.kShooterOptimalRange);
-                    mShooter.setSpinUp(setpoint);
-                }
-
-                boolean is_optimal_range = false;
-                if (range < Constants.kShooterOptimalRangeFloor) {
-                    mLED.setRangeBlicking(true);
-                } else if (range > Constants.kShooterOptimalRangeCeiling) {
-                    mLED.setRangeBlicking(true);
-                } else {
-                    mLED.setRangeBlicking(false);
-                    mLED.setRangeLEDOn();
-
-                    is_optimal_range = true;
-                }
-
-                SmartDashboard.putBoolean("optimal range", is_optimal_range);
-            } else {
-                // We are shooter tuning find current RPM we are tuning for.
-                mShooter.setHoldWhenReady(mCurrentTuningRpm);
-                mLastGoalRange = aimOptional.get().getRange();
-            }
-
-            return range_valid && isOnTargetToShoot()
-                    && (timestamp - aim.getLastSeenTimestamp()) < Constants.kMaxGoalTrackAge;
-        } else if (Superstructure.getInstance().isShooting()) {
-            mLED.setRangeBlicking(true);
-            // Keep the previous setpoint.
-            return false;
-        } else {
-            mLED.setRangeBlicking(true);
-            if (mShooter.getSetpointRpm() < Constants.kShooterTuningRpmFloor) {
-                // Hold setpoint if we were already spinning, since it's our best guess as to the range once the goal
-                // re-appears.
-                mShooter.setSpinUp(getShootingSetpointRpm(Constants.kDefaultShootingDistanceInches));
-            }
-            return false;
-        }
-    }
-
-    public synchronized void incrementTuningRpm() {
-        if (mCurrentTuningRpm <= Constants.kShooterTuningRpmCeiling) {
-            mCurrentTuningRpm += Constants.kShooterTuningRpmStep;
-            System.out.println("Changing RPM to: " + mCurrentTuningRpm);
-        }
-    }
 
     public synchronized double getCurrentTuningRpm() {
         return mCurrentTuningRpm;
@@ -569,14 +214,6 @@ public class Superstructure extends Subsystem {
 
     public synchronized void setWantedState(WantedState wantedState) {
         mWantedState = wantedState;
-    }
-
-    public synchronized void setShooterOpenLoop(double voltage) {
-        mShooter.setOpenLoop(voltage);
-    }
-
-    public synchronized void setClosedLoopRpm(double setpointRpm) {
-        mShooter.setHoldWhenReady(setpointRpm);
     }
 
     public synchronized void setActuateHopper(boolean extended) {
@@ -603,27 +240,8 @@ public class Superstructure extends Subsystem {
         enabledLooper.register(mLoop);
     }
 
-    public void setWantIntakeReversed() {
-        mIntake.setReverse();
-    }
-
-    public void setWantIntakeStopped() {
-        mIntake.setOff();
-    }
-
-    public void setWantIntakeOn() {
-        mIntake.setOn();
-    }
-
-    public void setWantIntakeOnForShooting() {
-        mIntake.setOnWhileShooting();
-    }
-
     public void setOverrideCompressor(boolean force_off) {
         mCompressorOverride = force_off;
     }
 
-    public void reloadConstants() {
-        mShooter.refreshControllerConsts();
-    }
 }
