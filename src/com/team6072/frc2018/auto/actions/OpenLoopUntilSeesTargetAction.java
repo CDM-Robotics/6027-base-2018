@@ -3,7 +3,6 @@ package com.team6072.frc2018.auto.actions;
 import edu.wpi.first.wpilibj.Timer;
 
 import com.team6072.frc2018.RobotState;
-import com.team6072.frc2018.ShooterAimingParameters;
 import com.team6072.frc2018.subsystems.Drive;
 import com.team6072.frc2018.subsystems.LED;
 import com.team6072.lib.util.DriveSignal;

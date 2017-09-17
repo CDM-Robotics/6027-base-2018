@@ -1,6 +1,5 @@
 package com.team6072.frc2018.loops;
 
-import com.team6072.frc2018.GoalTracker;
 import com.team6072.frc2018.RobotState;
 import com.team6072.frc2018.vision.VisionUpdate;
 import com.team6072.frc2018.vision.VisionUpdateReceiver;

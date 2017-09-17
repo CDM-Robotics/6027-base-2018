@@ -7,15 +7,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.team6072.frc2018.Constants;
 import com.team6072.frc2018.Robot;
-import com.team6072.frc2018.RobotState;
-import com.team6072.frc2018.ShooterAimingParameters;
 import com.team6072.frc2018.loops.Loop;
 import com.team6072.frc2018.loops.Looper;
 import com.team6072.lib.util.CircularBuffer;
 import com.team6072.lib.util.InterpolatingDouble;
 import com.team6072.lib.util.drivers.RevRoboticsAirPressureSensor;
-
-import java.util.Optional;
 
 /**
  * The superstructure subsystem is the overarching superclass containing all components of the superstructure: the
@@ -80,7 +76,6 @@ public class Superstructure extends Subsystem {
 
     private boolean mCompressorOverride = false;
 
-    private CircularBuffer mShooterRpmBuffer = new CircularBuffer(Constants.kShooterJamBufferSize);
     private double mLastDisturbanceShooterTime;
     private double mCurrentStateStartTime;
     private boolean mStateChanged;
@@ -194,15 +189,6 @@ public class Superstructure extends Subsystem {
             return SystemState.IDLE;
         }
     }
-
-    private double getShootingSetpointRpm(double range) {
-        if (Constants.kUseFlywheelAutoAimPolynomial) {
-            return Constants.kFlywheelAutoAimPolynomial.predict(range);
-        } else {
-            return Constants.kFlywheelAutoAimMap.getInterpolated(new InterpolatingDouble(range)).value;
-        }
-    }
-
 
     public synchronized double getCurrentTuningRpm() {
         return mCurrentTuningRpm;
