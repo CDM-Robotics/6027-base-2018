@@ -27,22 +27,12 @@ public class RobotStateEstimator implements Loop {
 
     @Override
     public synchronized void onStart(double timestamp) {
-        left_encoder_prev_distance_ = drive_.getLeftDistanceInches();
-        right_encoder_prev_distance_ = drive_.getRightDistanceInches();
+
     }
 
     @Override
     public synchronized void onLoop(double timestamp) {
-        final double left_distance = drive_.getLeftDistanceInches();
-        final double right_distance = drive_.getRightDistanceInches();
         final Rotation2d gyro_angle = drive_.getGyroAngle();
-        final Twist2d odometry_velocity = robot_state_.generateOdometryFromSensors(
-                left_distance - left_encoder_prev_distance_, right_distance - right_encoder_prev_distance_, gyro_angle);
-        final Twist2d predicted_velocity = Kinematics.forwardKinematics(drive_.getLeftVelocityInchesPerSec(),
-                drive_.getRightVelocityInchesPerSec());
-        robot_state_.addObservations(timestamp, odometry_velocity, predicted_velocity);
-        left_encoder_prev_distance_ = left_distance;
-        right_encoder_prev_distance_ = right_distance;
     }
 
     @Override

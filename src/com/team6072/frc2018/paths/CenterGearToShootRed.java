@@ -1,6 +1,5 @@
 package com.team6072.frc2018.paths;
 
-import com.team6072.frc2018.auto.modes.CenterGearThenShootModeRed;
 import com.team6072.frc2018.paths.PathBuilder.Waypoint;
 import com.team6072.lib.util.control.Path;
 import com.team6072.lib.util.math.RigidTransform2d;

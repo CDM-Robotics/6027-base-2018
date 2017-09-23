@@ -1,6 +1,5 @@
 package com.team6072.frc2018;
 
-import com.team6072.frc2018.GoalTracker.TrackReport;
 import com.team6072.frc2018.vision.TargetInfo;
 import com.team6072.lib.util.*;
 import com.team6072.lib.util.math.RigidTransform2d;

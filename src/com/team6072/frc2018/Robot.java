@@ -7,12 +7,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.team6072.frc2018.auto.AutoModeExecuter;
 import com.team6072.frc2018.loops.Looper;
-import com.team6072.frc2018.loops.RobotStateEstimator;
-import com.team6072.frc2018.loops.VisionProcessor;
-import com.team6072.frc2018.paths.profiles.PathAdapter;
+//import com.team6072.frc2018.loops.RobotStateEstimator;
+//import com.team6072.frc2018.loops.VisionProcessor;
+//import com.team6072.frc2018.paths.profiles.PathAdapter;
 import com.team6072.frc2018.subsystems.*;
-import com.team6072.frc2018.subsystems.MotorGearGrabber.WantedState;
-import com.team6072.frc2018.vision.VisionServer;
+//import com.team6072.frc2018.vision.VisionServer;
 import com.team6072.lib.util.*;
 import com.team6072.lib.util.math.RigidTransform2d;
 
@@ -37,7 +36,6 @@ public class Robot extends IterativeRobot {
     // Get subsystem instances
     private Drive mDrive = Drive.getInstance();
     private Superstructure mSuperstructure = Superstructure.getInstance();
-    private MotorGearGrabber mGearGrabber = MotorGearGrabber.getInstance();
     private LED mLED = LED.getInstance();
     private RobotState mRobotState = RobotState.getInstance();
     private AutoModeExecuter mAutoModeExecuter = null;
@@ -45,8 +43,7 @@ public class Robot extends IterativeRobot {
     // Create subsystem manager
     private final SubsystemManager mSubsystemManager = new SubsystemManager(
             Arrays.asList(Drive.getInstance(), Superstructure.getInstance(),
-                    ConnectionMonitor.getInstance(), LED.getInstance(),
-                    MotorGearGrabber.getInstance()));
+                    ConnectionMonitor.getInstance(), LED.getInstance()));
 
     // Initialize other helper objects
     private CheesyDriveHelper mCheesyDriveHelper = new CheesyDriveHelper();
@@ -54,7 +51,7 @@ public class Robot extends IterativeRobot {
 
     private Looper mEnabledLooper = new Looper();
 
-    private VisionServer mVisionServer = VisionServer.getInstance();
+    //private VisionServer mVisionServer = VisionServer.getInstance();
 
     private AnalogInput mCheckLightButton = new AnalogInput(Constants.kLEDOnId);
 
@@ -82,10 +79,10 @@ public class Robot extends IterativeRobot {
             CrashTracker.logRobotInit();
 
             mSubsystemManager.registerEnabledLoops(mEnabledLooper);
-            mEnabledLooper.register(VisionProcessor.getInstance());
-            mEnabledLooper.register(RobotStateEstimator.getInstance());
+            //mEnabledLooper.register(VisionProcessor.getInstance());
+            //mEnabledLooper.register(RobotStateEstimator.getInstance());
 
-            mVisionServer.addVisionUpdateReceiver(VisionProcessor.getInstance());
+            //mVisionServer.addVisionUpdateReceiver(VisionProcessor.getInstance());
 
             AutoModeSelector.initAutoModeSelector();
 
@@ -94,7 +91,7 @@ public class Robot extends IterativeRobot {
             mDelayedAimButton.update(Timer.getFPGATimestamp(), true);
 
             // Pre calculate the paths we use for auto.
-            PathAdapter.calculatePaths();
+            //PathAdapter.calculatePaths();
 
         } catch (Throwable t) {
             CrashTracker.logThrowableCrash(t);
@@ -106,8 +103,7 @@ public class Robot extends IterativeRobot {
     /**
      * Initializes the robot for the beginning of autonomous mode (set drivebase, intake and superstructure to correct
      * states). Then gets the correct auto mode from the AutoModeSelector
-     * 
-     * @see AutoModeSelector.java
+     *
      */
     @Override
     public void autonomousInit() {
@@ -235,16 +231,6 @@ public class Robot extends IterativeRobot {
             boolean score_gear = mControlBoard.getScoreGearButton();
             boolean grab_gear = mControlBoard.getGrabGearButton();
 
-            if (score_gear && grab_gear) {
-                mGearGrabber.setWantedState(WantedState.CLEAR_BALLS);
-            } else if (score_gear) {
-                mGearGrabber.setWantedState(WantedState.SCORE);
-            } else if (grab_gear) {
-                mGearGrabber.setWantedState(WantedState.ACQUIRE);
-            } else {
-                mGearGrabber.setWantedState(WantedState.IDLE);
-            }
-            
             allPeriodic();
         } catch (Throwable t) {
             CrashTracker.logThrowableCrash(t);
@@ -269,7 +255,7 @@ public class Robot extends IterativeRobot {
 
             mDrive.setOpenLoop(DriveSignal.NEUTRAL);
 
-            PathAdapter.calculatePaths();
+            //PathAdapter.calculatePaths();
 
             // If are tuning, dump map so far.
             if (Constants.kIsShooterTuning) {
@@ -302,7 +288,6 @@ public class Robot extends IterativeRobot {
         Timer.delay(0.5);
 
         boolean results = Drive.getInstance().checkSystem();
-        results &= MotorGearGrabber.getInstance().checkSystem();
 
         if (!results) {
             System.out.println("CHECK ABOVE OUTPUT SOME SYSTEMS FAILED!!!");
@@ -323,7 +308,7 @@ public class Robot extends IterativeRobot {
         mSubsystemManager.outputToSmartDashboard();
         mSubsystemManager.writeToLog();
         mEnabledLooper.outputToSmartDashboard();
-        SmartDashboard.putBoolean("camera_connected", mVisionServer.isConnected());
+        //SmartDashboard.putBoolean("camera_connected", mVisionServer.isConnected());
 
         ConnectionMonitor.getInstance().setLastPacketTime(Timer.getFPGATimestamp());
     }

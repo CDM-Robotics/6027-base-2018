@@ -1,6 +1,5 @@
 package com.team6072.frc2018.paths;
 
-import com.team6072.frc2018.auto.modes.GearThenHopperShootModeRed;
 import com.team6072.frc2018.paths.profiles.PathAdapter;
 import com.team6072.lib.util.control.Path;
 import com.team6072.lib.util.math.RigidTransform2d;
